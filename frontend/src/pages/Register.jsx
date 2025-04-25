@@ -3,114 +3,122 @@ import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import CssBaseline from "@mui/material/CssBaseline";
 import TextField from "@mui/material/TextField";
-import FormControlLabel from "@mui/material/FormControlLabel";
-import Checkbox from "@mui/material/Checkbox";
-import Link from "@mui/material/Link";
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-// import Form from 'react-bootstrap/Form';
-
-// import BackgroundVideo from '../Context/backgroundVideo';
-
 import Alert from "@mui/material/Alert";
+import { Select, MenuItem, FormHelperText } from "@mui/material";
 import axios from "axios";
-// import Alert from 'react-bootstrap/Alert';
-// import '../CSS/Login.css';
-
-import { Select, MenuItem } from "@mui/material";
 import config from "../config.js";
-import { useAuth } from "../context/auth.jsx";
 
 const defaultTheme = createTheme();
 
 export default function Register() {
-  const [loading, setloading] = useState(false);
-  const [Emailcheck, setEmailcheck] = useState(false);
-  const [passwordcheck, setpasswordcheck] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [justVerify, setJustVerify] = useState(false);
-  //   const [email, setEmail] = useState("");
-  //   const [password, setPassword] = useState("");
-  const [validPassword, setValidPassword] = useState(false);
+  const [validPassword, setValidPassword] = useState(true);
   const [isAlert, setIsAlert] = useState(false);
-  //   const navigate = useNavigate();
-
-  const handlePasswordofLogin = (e) => {
-    const input = e.target.value;
-    setpasswordcheck(true);
-    setPassword(input);
-    if (input.length < 8) {
-      setValidPassword(false);
-      return;
-    } else {
-      setValidPassword(true);
-    }
-  };
-
+  const [alertMessage, setAlertMessage] = useState("");
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
   const [repassword, setRePassword] = useState("");
   const [role, setRole] = useState("");
-
   const navigate = useNavigate();
-  const { LogOut } = useAuth();
+
+  const handlePasswordChange = (e) => {
+    const input = e.target.value;
+    setPassword(input);
+    setValidPassword(input.length === 0 || input.length >= 8);
+  };
+
+  const validateEmail = (email) => {
+    const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return re.test(email);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setJustVerify(true);
+    setIsAlert(false);
 
-    if (
-      username === "" ||
-      email === "" ||
-      name === "" ||
-      !validPassword ||
-      password !== repassword ||
-      role === ""
-    ) {
+    if (username.trim() === "") {
+      setIsAlert(true);
+      setAlertMessage("Username cannot be empty");
       return;
     }
 
-    setloading(true);
-    if (password === repassword) {
-      await axios
-        .post((config.BACKEND_API || "http://localhost:8000") + "/signup", {
-          username: username,
-          email: email,
-          name: name,
-          password: password,
-          role: role,
-        })
-        .then((response) => {
-          if (response.status === 201) {
-            navigate("/login");
-          }
-        })
-        .catch((error) => {
-          setIsAlert(true);
-          // if (error.response.status === 403) {
-          //   LogOut();
-          // }
-          // if (error.response?.status === 409) {
-          // } else {
-          //   console.error("Error: ", error);
-          // }
-
-          console.error("Error: ", error);
-        });
-    } else {
-      setPassword("");
-      setRePassword("");
-      alert("Passwords do not match!");
+    if (name.trim() === "") {
+      setIsAlert(true);
+      setAlertMessage("Name cannot be empty");
+      return;
     }
-    setloading(false);
+
+    if (email.trim() === "") {
+      setIsAlert(true);
+      setAlertMessage("Email cannot be empty");
+      return;
+    }
+
+    if (!validateEmail(email.trim())) {
+      setIsAlert(true);
+      setAlertMessage("Please enter a valid email address");
+      return;
+    }
+
+    if (password === "") {
+      setIsAlert(true);
+      setAlertMessage("Password cannot be empty");
+      return;
+    }
+
+    if (!validPassword) {
+      setIsAlert(true);
+      setAlertMessage("Password must be at least 8 characters long");
+      return;
+    }
+
+    if (password !== repassword) {
+      setIsAlert(true);
+      setAlertMessage("Passwords do not match");
+      return;
+    }
+
+    if (role === "") {
+      setIsAlert(true);
+      setAlertMessage("Please select a role");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await axios.post(`${config.BACKEND_API}/signup`, {
+        username: username.trim(),
+        email: email.trim(),
+        name: name.trim(),
+        password,
+        role,
+      });
+
+      if (response.status === 201 && response.data.success) {
+        navigate("/login");
+      } else {
+        setIsAlert(true);
+        setAlertMessage(response.data.message || "Registration failed");
+      }
+    } catch (error) {
+      setIsAlert(true);
+      setAlertMessage(error.response?.data?.message || "Registration failed");
+      console.error("Registration error:", error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -123,10 +131,6 @@ export default function Register() {
         >
           <CssBaseline />
           <Box
-            style={{
-              backgroundColor: "#caf0f8",
-              boxShadow: "0px 4px 8px #caf0f8",
-            }}
             sx={{
               marginTop: 12,
               marginBottom: 12,
@@ -137,9 +141,7 @@ export default function Register() {
               borderRadius: "2em",
               padding: "3em",
               height: "auto",
-              // "&:hover": {
-              //   border: "1px solid #03045e",
-              // },
+              boxShadow: "0px 4px 8px #caf0f8",
             }}
           >
             <Avatar sx={{ m: 1 }} style={{ backgroundColor: "#25396F" }}>
@@ -159,17 +161,13 @@ export default function Register() {
               sx={{ mt: 1, width: "100%" }}
             >
               <TextField
-                id="standard-basic-1"
-                variant="standard"
                 margin="normal"
                 required
                 fullWidth
                 label="Username"
                 name="username"
                 autoFocus
-                onChange={(e) => {
-                  setUsername(e.target.value);
-                }}
+                onChange={(e) => setUsername(e.target.value)}
                 value={username}
                 InputProps={{
                   style: {
@@ -177,25 +175,19 @@ export default function Register() {
                     fontWeight: "bold",
                   },
                 }}
-                error={justVerify && username === ""}
+                error={justVerify && username.trim() === ""}
                 helperText={
-                  justVerify &&
-                  (username === "" ? "This field cannot be empty." : "")
+                  justVerify && (username.trim() === "" ? "This field cannot be empty." : "")
                 }
                 autoComplete="off"
               />
               <TextField
-                id="standard-basic-2"
-                variant="standard"
                 margin="normal"
                 required
                 fullWidth
                 label="Name"
                 name="name"
-                autoFocus
-                onChange={(e) => {
-                  setName(e.target.value);
-                }}
+                onChange={(e) => setName(e.target.value)}
                 value={name}
                 InputProps={{
                   style: {
@@ -203,25 +195,19 @@ export default function Register() {
                     fontWeight: "bold",
                   },
                 }}
-                error={justVerify && name === ""}
+                error={justVerify && name.trim() === ""}
                 helperText={
-                  justVerify &&
-                  (name === "" ? "This field cannot be empty." : "")
+                  justVerify && (name.trim() === "" ? "This field cannot be empty." : "")
                 }
                 autoComplete="off"
               />
               <TextField
-                id="standard-basic-3"
-                variant="standard"
                 margin="normal"
                 required
                 fullWidth
                 label="Email Address"
                 name="email"
-                autoFocus
-                onChange={(e) => {
-                  setEmail(e.target.value);
-                }}
+                onChange={(e) => setEmail(e.target.value)}
                 value={email}
                 InputProps={{
                   style: {
@@ -229,24 +215,25 @@ export default function Register() {
                     fontWeight: "bold",
                   },
                 }}
-                error={justVerify && email === ""}
+                error={justVerify && (email.trim() === "" || !validateEmail(email.trim()))}
                 helperText={
                   justVerify &&
-                  (email === "" ? "This field cannot be empty." : "")
+                  (email.trim() === ""
+                    ? "This field cannot be empty."
+                    : !validateEmail(email.trim())
+                    ? "Please enter a valid email address"
+                    : "")
                 }
                 autoComplete="off"
               />
-
               <TextField
-                id="standard-basic-4"
-                variant="standard"
                 margin="normal"
                 required
                 fullWidth
                 name="password"
                 label="Password"
                 type="password"
-                onChange={handlePasswordofLogin}
+                onChange={handlePasswordChange}
                 value={password}
                 InputProps={{
                   style: {
@@ -261,23 +248,19 @@ export default function Register() {
                   (password === ""
                     ? "This field cannot be empty."
                     : !validPassword
-                    ? "The password must contain at least 8 digits."
+                    ? "The password must contain at least 8 characters."
                     : "")
                 }
                 autoComplete="off"
               />
               <TextField
-                id="standard-basic-5"
-                variant="standard"
                 margin="normal"
                 required
                 fullWidth
-                name="password"
-                label="Confirm - Password"
+                name="confirmPassword"
+                label="Confirm Password"
                 type="password"
-                onChange={(e) => {
-                  setRePassword(e.target.value);
-                }}
+                onChange={(e) => setRePassword(e.target.value)}
                 value={repassword}
                 InputProps={{
                   style: {
@@ -288,8 +271,7 @@ export default function Register() {
                 }}
                 error={justVerify && repassword !== password}
                 helperText={
-                  justVerify &&
-                  (repassword !== password ? "password is not mathing" : "")
+                  justVerify && (repassword !== password ? "Passwords do not match" : "")
                 }
                 autoComplete="off"
               />
@@ -297,44 +279,29 @@ export default function Register() {
                 item
                 xs={10}
                 style={{ marginTop: "0.4em", fontFamily: "Quicksand" }}
-                sx={{
-                  fontWeight: "bold",
-                }}
-                id="searchBoxContainer"
+                sx={{ fontWeight: "bold" }}
               >
                 Role *
               </Grid>
               <Select
                 value={role}
-                onChange={(e) => {
-                  setRole(e.target.value);
-                }}
+                onChange={(e) => setRole(e.target.value)}
                 style={{ fontWeight: "bold", fontFamily: "Quicksand" }}
                 displayEmpty
                 inputProps={{ "aria-label": "Without label" }}
                 fullWidth
                 error={justVerify && role === ""}
               >
-                <MenuItem
-                  value="compostAgency"
-                  style={{ fontWeight: "bold", fontFamily: "Quicksand" }}
-                >
-                  Compost Agency
+                <MenuItem value="" disabled>
+                  <em>Select a role</em>
                 </MenuItem>
-                <MenuItem
-                  value="ngo"
-                  style={{ fontWeight: "bold", fontFamily: "Quicksand" }}
-                >
-                  NGO
-                </MenuItem>
-                <MenuItem
-                  value="donor"
-                  style={{ fontWeight: "bold", fontFamily: "Quicksand" }}
-                >
-                  Donor
-                </MenuItem>
+                <MenuItem value="compostAgency">Compost Agency</MenuItem>
+                <MenuItem value="ngo">NGO</MenuItem>
+                <MenuItem value="donor">Donor</MenuItem>
               </Select>
-
+              {justVerify && role === "" && (
+                <FormHelperText error>Please select a role</FormHelperText>
+              )}
               <Button
                 type="submit"
                 fullWidth
@@ -345,6 +312,7 @@ export default function Register() {
                   fontWeight: "bold",
                   backgroundColor: "#25396F",
                 }}
+                disabled={loading}
               >
                 {!loading ? "Sign Up" : "Signing Up...."}
               </Button>
@@ -356,23 +324,19 @@ export default function Register() {
                       severity="error"
                       style={{ fontFamily: "Quicksand", fontWeight: "600" }}
                     >
-                      User Already Exist !!
+                      {alertMessage}
                     </Alert>
                   )}
                 </Grid>
                 <Grid item xs={12}>
                   <Button
-                    color="secondary"
-                    onClick={() => {
-                      navigate("/login");
-                    }}
+                    onClick={() => navigate("/login")}
                     variant="text"
                     style={{
                       fontFamily: "Quicksand",
                       fontWeight: "bold",
-                      color: "ghostwhite",
-                      textDecoration: "underline",
                       color: "#03045e",
+                      textDecoration: "underline",
                     }}
                   >
                     Already have an account? Sign In

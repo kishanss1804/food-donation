@@ -3,7 +3,6 @@ import cors from 'cors';
 import dotenv from "dotenv";
 import db from "./config/mongoose.js";
 import cookieParser from "cookie-parser";
-import crypto from "crypto";
 import router from './routes/index.js';
 
 dotenv.config();
@@ -21,6 +20,7 @@ app.use(cors({
     credentials: true
 }));
 
+// Route registration
 app.use('/', router);
 
 app.listen(PORT, () => {

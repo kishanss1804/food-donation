@@ -33,11 +33,10 @@ function Navbar() {
   const navbarStyle = {
     position: "sticky",
     top: "0%",
-    zIndex: 100,
+    zIndex: 100, // Removed duplicate zIndex
     backdropFilter: "blur(10px)",
     margin: 0,
     overflowY: "hidden",
-    zIndex: 4,
   };
 
   return (
