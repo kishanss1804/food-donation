@@ -3,15 +3,28 @@ import Avatar from "@mui/material/Avatar";
 import Button from "@mui/material/Button";
 import CssBaseline from "@mui/material/CssBaseline";
 import TextField from "@mui/material/TextField";
+import FormControlLabel from "@mui/material/FormControlLabel";
+import Checkbox from "@mui/material/Checkbox";
+import Link from "@mui/material/Link";
 import Grid from "@mui/material/Grid";
 import Box from "@mui/material/Box";
 import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Typography from "@mui/material/Typography";
 import Container from "@mui/material/Container";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
-import { useState } from "react";
+
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+// import Form from "react-bootstrap/Form";
+
+// import BackgroundVideo from '../Context/backgroundVideo';
+
+// import { useFirebase } from '../Context/Firebase';
 import Alert from "@mui/material/Alert";
+
+// import Alert from "react-bootstrap/Alert";
+// import "../CSS/Login.css";
+
 import { useAuth } from "../context/auth";
 import axios from "axios";
 import config from "../config.js";
@@ -19,67 +32,78 @@ import config from "../config.js";
 const defaultTheme = createTheme();
 
 export default function Login() {
-  const [loading, setLoading] = useState(false);
+  const [loading, setloading] = useState(false);
+  const [Emailcheck, setEmailcheck] = useState(false);
+  const [passwordcheck, setpasswordcheck] = useState(false);
   const [justVerify, setJustVerify] = useState(false);
-  const [validPassword, setValidPassword] = useState(true);
-  const { setIsLoggedIn, setRole } = useAuth();
+
+  //   const [email, setEmail] = useState("");
+  //   const [password, setPassword] = useState("");
+  const [validPassword, setValidPassword] = useState(false);
+  const { setIsLoggedIn, setRole, LogOut } = useAuth();
+
   const [isAlert, setIsAlert] = useState(false);
-  const [alertMessage, setAlertMessage] = useState("");
+  // const navigate = useNavigate();
+
+  //   const handleSubmit = async (e) => {};
+
+  const handlePasswordofLogin = (e) => {
+    const input = e.target.value;
+    // setpasswordcheck(true);
+    setPassword(input);
+    if (input.length < 8) {
+      setValidPassword(false);
+      return;
+    } else {
+      setValidPassword(true);
+    }
+  };
+
   const [emailUsername, setEmailUsername] = useState("");
   const [password, setPassword] = useState("");
   const navigate = useNavigate();
 
-  const handlePasswordChange = (e) => {
-    const input = e.target.value;
-    setPassword(input);
-    setValidPassword(input.length === 0 || input.length >= 8);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     setJustVerify(true);
-    setIsAlert(false);
-
-    if (emailUsername.trim() === "") {
-      setIsAlert(true);
-      setAlertMessage("Username/Email cannot be empty");
+    if (emailUsername === "" || password === "" || !validPassword) {
       return;
     }
+    setloading(true);
+    await axios
+      .post(
+        (config.BACKEND_API || "http://localhost:8000") + "/create-session",
+        {
+          emailUsername: emailUsername,
+          password: password,
+        }
+      )
+      .then((response) => {
+        const { token, role } = response.data;
+        localStorage.setItem("token", JSON.stringify(token));
+        localStorage.setItem("role", JSON.stringify(role));
+        setIsLoggedIn(true);
+        setRole(role);
+        navigate("/");
+      })
+      .catch((error) => {
+        setIsAlert(true);
+        // if (error.response.status === 403) {
+        //   LogOut();
+        // }
+        // if (error.response?.status === 401) {
+        //   // setEmailUsername("");
+        //   // setPassword("");
+        //   //   alert("Invalid Username/Email or Password!");
+        //   console.log("Error: 401 -> Login");
+        // } else {
+        //   console.error("Error: ", error);
+        // }
 
-    if (password === "") {
-      setIsAlert(true);
-      setAlertMessage("Password cannot be empty");
-      return;
-    }
-
-    if (!validPassword) {
-      setIsAlert(true);
-      setAlertMessage("Password must be at least 8 characters long");
-      return;
-    }
-
-    setLoading(true);
-    try {
-      const response = await axios.post(`${config.BACKEND_API}/create-session`, {
-        emailUsername: emailUsername.trim(),
-        password
+        console.error("Error: ", error);
       });
-
-      const { token, user } = response.data;
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(user));
-      localStorage.setItem("role", user.role);
-      setIsLoggedIn(true);
-      setRole(user.role);
-      navigate("/");
-    } catch (error) {
-      setIsAlert(true);
-      setAlertMessage(error.response?.data?.message || "Invalid credentials");
-      console.error("Login error:", error);
-    } finally {
-      setLoading(false);
-    }
+    setloading(false);
   };
 
   return (
@@ -92,6 +116,10 @@ export default function Login() {
         >
           <CssBaseline />
           <Box
+            style={{
+              backgroundColor: "#caf0f8",
+              boxShadow: "0px 4px 8px #caf0f8",
+            }}
             sx={{
               marginTop: 12,
               display: "flex",
@@ -101,7 +129,6 @@ export default function Login() {
               borderRadius: "2em",
               padding: "3em",
               height: "auto",
-              boxShadow: "0px 4px 8px #caf0f8",
             }}
           >
             <Avatar sx={{ m: 1 }} style={{ backgroundColor: "#25396F" }}>
@@ -121,6 +148,8 @@ export default function Login() {
               sx={{ mt: 1, width: "100%" }}
             >
               <TextField
+                id="standard-basic-1"
+                variant="standard"
                 margin="normal"
                 required
                 fullWidth
@@ -128,7 +157,9 @@ export default function Login() {
                 name="email"
                 autoFocus
                 value={emailUsername}
-                onChange={(e) => setEmailUsername(e.target.value)}
+                onChange={(e) => {
+                  setEmailUsername(e.target.value);
+                }}
                 InputProps={{
                   style: {
                     fontFamily: "Quicksand",
@@ -136,21 +167,23 @@ export default function Login() {
                     color: "#25396F",
                   },
                 }}
-                error={justVerify && emailUsername.trim() === ""}
+                error={justVerify && emailUsername === ""}
                 helperText={
                   justVerify &&
-                  (emailUsername.trim() === "" ? "This field cannot be empty." : "")
+                  (emailUsername == "" ? "This field cannot be empty." : "")
                 }
                 autoComplete="off"
               />
               <TextField
+                id="standard-basic-2"
+                variant="standard"
                 margin="normal"
                 required
                 fullWidth
                 name="password"
                 label="Password"
                 type="password"
-                onChange={handlePasswordChange}
+                onChange={handlePasswordofLogin}
                 value={password}
                 InputProps={{
                   style: {
@@ -165,7 +198,7 @@ export default function Login() {
                   (password === ""
                     ? "This field cannot be empty."
                     : !validPassword
-                    ? "The password must contain at least 8 characters."
+                    ? "The password must contain at least 8 digits."
                     : "")
                 }
                 autoComplete="off"
@@ -180,26 +213,27 @@ export default function Login() {
                   fontWeight: "bold",
                   backgroundColor: "#25396F",
                 }}
-                disabled={loading}
               >
                 {!loading ? "Sign In" : "Signing In...."}
               </Button>
               <Grid container>
                 <Grid item xs={12}>
-                  {isAlert && (
+                  {window.localStorage.getItem("token") === null && isAlert && (
                     <Alert
                       variant="filled"
                       severity="error"
                       style={{ fontFamily: "Quicksand", fontWeight: "600" }}
                     >
-                      {alertMessage}
+                      Invalid Email and/or Password
                     </Alert>
                   )}
                 </Grid>
                 <Grid item xs={12}>
                   <Button
                     color="secondary"
-                    onClick={() => navigate("/register")}
+                    onClick={() => {
+                      navigate("/register");
+                    }}
                     variant="text"
                     style={{
                       fontFamily: "Quicksand",
